@@ -11,6 +11,9 @@ from django.utils.encoding import force_str  # To convert bytes back into a read
 from django.contrib.auth.models import User  # To look up the user in the database
 from django.contrib.auth.tokens import default_token_generator  # To verify the security token
 
+from rest_framework.permissions import IsAuthenticated
+
+
 
 # Create your views here.
 
@@ -145,3 +148,24 @@ class ResetPasswordConfirmView(APIView):
 
         # Fail if the token is old or tampered with
         return Response({"error": "Invalid or expired reset link."}, status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePasswordView(APIView):
+    # Only logged-in users with a valid token can access this
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Grab the old and new passwords from the request body
+        old_password = request.data.get("old_password")
+        new_password = request.data.get("new_password")
+        user = request.user # Django already knows who this is from the token
+
+        # Verify that the 'old_password' matches what is in the database
+        if not user.check_password(old_password):
+            return Response({"error": "Old password is incorrect"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Securely hash and save the new password
+        user.set_password(new_password)
+        user.save()
+
+        # Return success message
+        return Response({"message": "Password updated successfully!"}, status=status.HTTP_200_OK)

@@ -10,7 +10,7 @@ class SignupSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
 
-    # These are extra fields you asked for
+    # These are extra fields
     age = serializers.IntegerField(write_only=True)
     phone = serializers.CharField(write_only=True)
 
@@ -26,31 +26,34 @@ class SignupSerializer(serializers.ModelSerializer):
 
     # This saves the user to the database
     def create(self, validated_data):
-        # Extract the password from the data
+        # Extract and SAVE the values into variables
         password = validated_data.pop('password')
-        validated_data.pop('confirm_password')
+        validated_data.pop('confirm_password', None)
 
-        # 1. Create the user but set is_active to False
+        # We save 'age' and 'phone' to variables so we can use them in the print statement
+        age = validated_data.pop('age', None)
+        phone = validated_data.pop('phone', None)
+
+        # CREATE USER
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
+            password=password,
+            is_active=False
         )
-        # Scramble the password so Django can read it later
-        user.set_password(password)
-        user.is_active = False  # User cannot log_in yet!
-        user.save()
 
-        # 2. Generate a unique token and a Base64 version of the User ID
+        # Generate security tokens
+        uid = urlsafe_base64_encode(force_bytes(str(user.pk)))
         token = default_token_generator.make_token(user)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-        # 3. Create the "Activation Link"
+        # Activation Link
         activation_link = f"http://127.0.0.1:8000/api/activate/{uid}/{token}/"
 
-        # 4. "Print" the email to the terminal (Mocking the email server)
+        # 5. Terminal Output (Now 'age' and 'phone' are defined!)
         print("\n" + "=" * 50)
         print(f"SUBJECT: Activate Your Account")
         print(f"TO: {user.email}")
+        print(f"AGE: {age} | PHONE: {phone}")  # Proof we captured custom fields
         print(f"BODY: Please click the link below to verify your account:")
         print(f"\n{activation_link}\n")
         print("=" * 50 + "\n")
