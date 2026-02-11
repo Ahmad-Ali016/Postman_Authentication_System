@@ -2,7 +2,6 @@ from jwt.utils import force_bytes
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import SignupSerializer
 
@@ -169,3 +168,24 @@ class ChangePasswordView(APIView):
 
         # Return success message
         return Response({"message": "Password updated successfully!"}, status=status.HTTP_200_OK)
+
+
+class LogoutView(APIView):
+    # Only a logged-in user can log out
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            # 1. Grab the refresh token from the request body
+            refresh_token = request.data.get("refresh")
+
+            # 2. Pass it to the RefreshToken object
+            token = RefreshToken(refresh_token)
+
+            # 3. Add the token to the blacklist
+            token.blacklist()
+
+            return Response({"message": "Successfully logged out."}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            # If the token is already invalid or missing, return an error
+            return Response({"error": "Invalid token or already logged out."}, status=status.HTTP_400_BAD_REQUEST)
